@@ -29,7 +29,7 @@ import {
 import { useToast } from '@/components/ui/use-toast'
 import axios from 'axios'
 import { formatDate } from '@/lib/utils'
-import { CertificateGenerator } from '@/components/certificate/certificate-generator'
+import { CertificateGenerator } from '@/components/certificate/certificate'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 

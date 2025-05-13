@@ -2,185 +2,106 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-
-interface UserData {
-  id: number;
-  username: string;
-  email: string;
-  full_name: string;
-  is_active: boolean;
-  is_admin: boolean;
+interface User {
+  id: number
+  username: string
+  email: string
+  full_name: string
+  is_active: boolean
+  is_admin: boolean
 }
 
 interface AuthContextType {
-  user: UserData | null;
-  isLoading: boolean;
-  error: string | null;
-  login: (username: string, password: string, remember: boolean) => Promise<boolean>;
-  logout: () => void;
-  checkAuth: () => Promise<boolean>;
+  user: User | null
+  isLoading: boolean
+  checkAuth: () => Promise<boolean>
+  logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// API URL from environment or default
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserData | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
 
-  // Check if user is authenticated on load
-  useEffect(() => {
-    const initAuth = async () => {
-      await checkAuth()
-      setIsLoading(false)
-    }
-    
-    initAuth()
-  }, [])
-
-  // Login function
-  const login = async (username: string, password: string, remember: boolean): Promise<boolean> => {
-    setIsLoading(true)
-    setError(null)
-    
+  const checkAuth = async (): Promise<boolean> => {
     try {
-      // Create form data for FastAPI token endpoint
-      const formData = new URLSearchParams()
-      formData.append('username', username)
-      formData.append('password', password)
+      setIsLoading(true)
       
-      // Make direct API call to FastAPI for authentication
-      const response = await axios.post(`${API_URL}/token`, formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      })
-      
-      // Check for token in response
-      if (response.data.access_token) {
-        // Store token in localStorage
-        localStorage.setItem('token', response.data.access_token)
-        if (remember) {
-          localStorage.setItem('remember_user', username)
-        } else {
-          localStorage.removeItem('remember_user')
-        }
-        
-        // Try to get user info
-        try {
-          const userResponse = await axios.get(`${API_URL}/users/me/`, {
-            headers: {
-              'Authorization': `Bearer ${response.data.access_token}`
-            }
-          })
-          
-          // Store user info if available
-          if (userResponse.data) {
-            localStorage.setItem('user', JSON.stringify(userResponse.data))
-            setUser(userResponse.data)
-          }
-        } catch (userError) {
-          console.warn('Could not fetch user details, but login successful')
-        }
-        
-        return true
-      } else {
-        setError('Authentication failed - no token received')
+      // Only run on client side
+      if (typeof window === 'undefined') {
         return false
       }
-    } catch (err: any) {
-      console.error('Login error:', err)
       
-      // Handle specific error cases
-      if (err.response) {
-        if (err.response.status === 401) {
-          setError('Invalid username or password')
-        } else if (err.response.status === 422) {
-          setError('Validation error - please check your inputs')
-        } else {
-          setError(`Server error: ${err.response.status}`)
-        }
-      } else if (err.request) {
-        setError('Network error - please check your connection')
-      } else {
-        setError(`Error: ${err.message}`)
+      const token = localStorage.getItem('token')
+      
+      if (!token) {
+        setUser(null)
+        setIsLoading(false)
+        return false
       }
-      
+
+      // Create axios instance with base config
+      const instance = axios.create({
+        baseURL: API_URL,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      // Validate token with the server by fetching user data
+      const response = await instance.get('/users/me/')
+
+      if (response.data) {
+        setUser(response.data)
+        localStorage.setItem('user', JSON.stringify(response.data))
+        return true
+      } else {
+        // Invalid response, clear auth
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setUser(null)
+        return false
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      // Token is invalid or expired, clear local storage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+      }
+      setUser(null)
       return false
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Logout function
   const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setUser(null)
-    router.push('/auth/login')
-  }
-
-  // Check if user is authenticated
-  const checkAuth = async (): Promise<boolean> => {
-    setIsLoading(true)
-    
-    try {
-      // Try to get cached user data first
-      const cachedUserData = localStorage.getItem('user')
-      if (cachedUserData) {
-        try {
-          const parsedData = JSON.parse(cachedUserData)
-          setUser(parsedData)
-          setIsLoading(false)
-          return true
-        } catch (parseError) {
-          // If parsing fails, continue to API fetch
-          console.error('Error parsing cached user data:', parseError)
-          localStorage.removeItem('user')
-        }
-      }
-      
-      // Get token from localStorage
-      const token = localStorage.getItem('token')
-      if (!token) {
-        setIsLoading(false)
-        return false
-      }
-      
-      // Validate token by getting user info
-      const response = await axios.get(`${API_URL}/users/me/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      
-      if (response.data) {
-        localStorage.setItem('user', JSON.stringify(response.data))
-        setUser(response.data)
-        setIsLoading(false)
-        return true
-      } else {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        setIsLoading(false)
-        return false
-      }
-    } catch (err) {
-      console.error('Authentication check error:', err)
+    if (typeof window !== 'undefined') {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      setIsLoading(false)
-      return false
+      localStorage.removeItem('remember_user')
     }
+    setUser(null)
+    window.location.href = '/auth/login'
   }
 
+  // Check auth status on mount
+  useEffect(() => {
+    // Only run on client
+    if (typeof window !== 'undefined') {
+      checkAuth()
+    }
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, login, logout, checkAuth }}>
+    <AuthContext.Provider value={{ user, isLoading, checkAuth, logout }}>
       {children}
     </AuthContext.Provider>
   )

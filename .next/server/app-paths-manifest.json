@@ -1,0 +1,8 @@
+{
+  "/dashboard/trainers/[id]/page": "app/dashboard/trainers/[id]/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/certificates/page": "app/dashboard/certificates/page.js",
+  "/dashboard/certificates/new/page": "app/dashboard/certificates/new/page.js",
+  "/dashboard/trainers/add/page": "app/dashboard/trainers/add/page.js",
+  "/dashboard/certificates/[certificateId]/page": "app/dashboard/certificates/[certificateId]/page.js"
+}

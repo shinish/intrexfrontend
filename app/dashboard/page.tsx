@@ -1,431 +1,268 @@
+// app/dashboard/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import axios from 'axios'
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle,
-  CardFooter
-} from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/use-toast'
 import { 
+  ClipboardList, 
   Users, 
   BookOpen, 
   GraduationCap, 
-  DollarSign, 
-  ClipboardList, 
-  Loader2,
-  CalendarDays,
+  Award,
+  Plus,
   Eye,
-  ArrowRight
+  ChevronRight,
+  DollarSign,
+  Calendar
 } from 'lucide-react'
-
-// Function to get token
-const getToken = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token')
-  }
-  return null
-}
+import Link from 'next/link'
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const { toast } = useToast()
-  
-  // Dashboard state
-  const [isLoading, setIsLoading] = useState(true)
-  const [stats, setStats] = useState({
-    totalRegistrations: 0,
-    totalCustomers: 0,
-    totalTrainers: 0,
-    totalCourses: 0,
-    revenue: 0
-  })
-  const [registrations, setRegistrations] = useState([])
-  const [customers, setCustomers] = useState([])
-  const [courses, setCourses] = useState([])
-  const [trainers, setTrainers] = useState([])
-  
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true)
-        
-        const token = getToken()
-        if (!token) {
-          router.push('/auth/login')
-          return
-        }
-        
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-        
-        // Fetch data from API
-        const [
-          customersRes,
-          trainersRes,
-          coursesRes,
-          registrationsRes
-        ] = await Promise.all([
-          axios.get(`${apiUrl}/customers/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          axios.get(`${apiUrl}/trainers/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          axios.get(`${apiUrl}/training-courses/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          }),
-          axios.get(`${apiUrl}/training-registrations/`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-        ])
-        
-        // Store fetched data
-        const customersData = customersRes.data
-        const trainersData = trainersRes.data
-        const coursesData = coursesRes.data
-        const registrationsData = registrationsRes.data
-        
-        // Set data for reference
-        setCustomers(customersData)
-        setTrainers(trainersData)
-        setCourses(coursesData)
-        
-        // Sort registrations by date (newest first)
-        const sortedRegistrations = [...registrationsData].sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )
-        
-        setRegistrations(sortedRegistrations)
-        
-        // Calculate total revenue
-        const revenue = registrationsData.reduce((total, reg) => total + (reg.total_amount_kd || 0), 0)
-        
-        setStats({
-          totalRegistrations: registrationsData.length,
-          totalCustomers: customersData.length,
-          totalTrainers: trainersData.length,
-          totalCourses: coursesData.length,
-          revenue: revenue
-        })
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load dashboard data",
-          variant: "destructive"
-        })
-      } finally {
-        setIsLoading(false)
-      }
+  // Stats data
+  const statsCards = [
+    {
+      title: 'Registrations',
+      value: '1',
+      subtitle: 'Current Registrations',
+      icon: <ClipboardList className="h-8 w-8 text-purple-600" />,
+      color: 'purple'
+    },
+    {
+      title: 'Active Trainers', 
+      value: '2',
+      subtitle: 'Current Trainers',
+      icon: <GraduationCap className="h-8 w-8 text-blue-600" />,
+      color: 'blue'
+    },
+    {
+      title: 'Customers',
+      value: '1',
+      subtitle: 'Total Customers',
+      icon: <Users className="h-8 w-8 text-green-600" />,
+      color: 'green'
+    },
+    {
+      title: 'Trainees',
+      value: '2',
+      subtitle: 'Active Trainees',
+      icon: <Users className="h-8 w-8 text-orange-600" />,
+      color: 'orange'
+    },
+    {
+      title: 'Revenue',
+      value: '8 KD',
+      subtitle: 'Total Revenue',
+      icon: <DollarSign className="h-8 w-8 text-emerald-600" />,
+      color: 'emerald'
     }
-    
-    fetchDashboardData()
-  }, [router, toast])
+  ]
   
-  // Helper: Get customer name by ID
-  const getCustomerName = (customerId) => {
-    const customer = customers.find(c => c.id === customerId)
-    return customer ? customer.name : 'Unknown'
-  }
+  // Recent registrations data
+  const recentRegistrations = [
+    {
+      id: 'TR-2025-00001',
+      company: 'FISS',
+      course: 'Dozer Driver',
+      type: 'Alay',
+      trainees: 2,
+      amount: '8 KD',
+      date: 'May 11, 2025',
+      status: 'Completed'
+    }
+  ]
   
-  // Helper: Get course title by ID
-  const getCourseTitle = (courseId) => {
-    const course = courses.find(c => c.id === courseId)
-    return course ? course.title : 'Unknown'
-  }
+  // Registration status data
+  const registrationStatus = [
+    { status: 'Pending', count: 25, percentage: 25, color: 'bg-yellow-400' },
+    { status: 'Confirmed', count: 45, percentage: 45, color: 'bg-blue-400' },
+    { status: 'Completed', count: 80, percentage: 80, color: 'bg-green-400' },
+    { status: 'Cancelled', count: 10, percentage: 10, color: 'bg-red-400' }
+  ]
   
-  // Helper: Get trainer name by ID
-  const getTrainerName = (trainerId) => {
-    const trainer = trainers.find(t => t.id === trainerId)
-    return trainer ? trainer.name : 'Unknown'
-  }
+  // Upcoming events
+  const upcomingEvents = [
+    {
+      date: '15',
+      month: 'May',
+      title: 'Safety Training Workshop',
+      company: 'ABC Corporation',
+      trainees: 12
+    }
+  ]
   
-  // Format currency
-  const formatCurrency = (value) => {
-    return `${value?.toLocaleString() || 0} KD`
-  }
-  
-  // Format date
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' }
-    return new Date(dateString).toLocaleDateString(undefined, options)
-  }
-  
-  // View registration details
-  const viewRegistrationDetails = (registrationId) => {
-    router.push(`/dashboard/registrations/${registrationId}`)
-  }
-  
-  if (isLoading) {
-    return (
-      <div className="p-6">
-        <div className="h-96 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading dashboard data...</span>
-        </div>
-      </div>
-    )
-  }
+  // Quick actions
+  const quickActions = [
+    {
+      icon: <Plus className="h-5 w-5" />,
+      label: 'New Registration',
+      href: '/dashboard/registrations/add',
+      color: 'bg-purple-600 hover:bg-purple-700'
+    },
+    {
+      icon: <Users className="h-5 w-5" />,
+      label: 'Add Customer',
+      href: '/dashboard/customers/add',
+      color: 'bg-blue-600 hover:bg-blue-700'
+    },
+    {
+      icon: <GraduationCap className="h-5 w-5" />,
+      label: 'Add Trainer',
+      href: '/dashboard/trainers/add',
+      color: 'bg-green-600 hover:bg-green-700'
+    },
+    {
+      icon: <BookOpen className="h-5 w-5" />,
+      label: 'Add Course',
+      href: '/dashboard/courses/add',
+      color: 'bg-orange-600 hover:bg-orange-700'
+    }
+  ]
   
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">Overview of your training management system</p>
+      </div>
       
-      {/* Stats overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center pt-6">
-            <div className="rounded-full bg-primary/10 p-3 mb-2">
-              <ClipboardList className="h-6 w-6 text-primary" />
-            </div>
-            <h2 className="text-3xl font-bold">{stats.totalRegistrations}</h2>
-            <p className="text-sm text-muted-foreground">Total Registrations</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center pt-6">
-            <div className="rounded-full bg-primary/10 p-3 mb-2">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-            <h2 className="text-3xl font-bold">{stats.totalCustomers}</h2>
-            <p className="text-sm text-muted-foreground">Total Customers</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center pt-6">
-            <div className="rounded-full bg-primary/10 p-3 mb-2">
-              <GraduationCap className="h-6 w-6 text-primary" />
-            </div>
-            <h2 className="text-3xl font-bold">{stats.totalTrainers}</h2>
-            <p className="text-sm text-muted-foreground">Active Trainers</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center pt-6">
-            <div className="rounded-full bg-primary/10 p-3 mb-2">
-              <BookOpen className="h-6 w-6 text-primary" />
-            </div>
-            <h2 className="text-3xl font-bold">{stats.totalCourses}</h2>
-            <p className="text-sm text-muted-foreground">Available Courses</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center pt-6">
-            <div className="rounded-full bg-primary/10 p-3 mb-2">
-              <DollarSign className="h-6 w-6 text-primary" />
-            </div>
-            <h2 className="text-3xl font-bold">{formatCurrency(stats.revenue)}</h2>
-            <p className="text-sm text-muted-foreground">Total Revenue</p>
-          </CardContent>
-        </Card>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {statsCards.map((stat, index) => (
+          <Card key={index} className="bg-white border-gray-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-lg bg-gray-50">
+                  {stat.icon}
+                </div>
+                <span className="text-sm text-gray-500">{stat.title}</span>
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">{stat.value}</h3>
+                <p className="text-xs text-gray-500 mt-1">{stat.subtitle}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
       
       {/* Recent Registrations */}
-      <Card className="mb-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle>Recent Registrations</CardTitle>
-            <CardDescription>
-              Latest training registrations from the database
-            </CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => router.push('/dashboard/registrations')}>
-            View All
-            <ArrowRight className="ml-2 h-4 w-4" />
+      <Card className="bg-white border-gray-200">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-gray-900">Recent Registrations</CardTitle>
+          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+            View All <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </CardHeader>
         <CardContent>
-          {registrations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No registrations found in the database
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Registration #</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Course</TableHead>
-                    <TableHead>Trainer</TableHead>
-                    <TableHead>Trainees</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {registrations.slice(0, 10).map((registration) => (
-                    <TableRow key={registration.id}>
-                      <TableCell className="font-medium">{registration.registration_number}</TableCell>
-                      <TableCell>{getCustomerName(registration.customer_id)}</TableCell>
-                      <TableCell>{getCourseTitle(registration.training_course_id)}</TableCell>
-                      <TableCell>{getTrainerName(registration.trainer_id)}</TableCell>
-                      <TableCell>{registration.num_trainees}</TableCell>
-                      <TableCell>{formatCurrency(registration.total_amount_kd)}</TableCell>
-                      <TableCell>{formatDate(registration.request_date)}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          className={`${
-                            registration.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                            registration.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                            registration.status === 'Confirmed' ? 'bg-blue-100 text-blue-800' :
-                            'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {registration.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => viewRegistrationDetails(registration.id)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Registration #</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Company</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Course</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Type</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Trainees</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Amount</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Date</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Status</th>
+                  <th className="text-left py-3 px-4 font-medium text-sm text-gray-500">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentRegistrations.map((registration) => (
+                  <tr key={registration.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.id}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.company}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.course}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.type}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.trainees}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.amount}</td>
+                    <td className="py-3 px-4 text-sm text-gray-900">{registration.date}</td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {registration.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4 text-gray-600" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
       
-      {/* Registration Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <Card>
+      {/* Registration Status and Upcoming Events */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Registration Status */}
+        <Card className="bg-white border-gray-200">
           <CardHeader>
-            <CardTitle>Registration Status</CardTitle>
-            <CardDescription>
-              Summary of registration statuses
-            </CardDescription>
+            <CardTitle className="text-lg font-semibold text-gray-900">Registration Status</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {['Pending', 'Confirmed', 'Completed', 'Cancelled'].map(status => {
-                const count = registrations.filter(r => r.status === status).length
-                const percentage = registrations.length > 0 
-                  ? Math.round((count / registrations.length) * 100) 
-                  : 0
-                  
-                return (
-                  <div key={status}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium">{status}</span>
-                      <span className="text-sm text-muted-foreground">{count} ({percentage}%)</span>
-                    </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${
-                          status === 'Completed' ? 'bg-green-500' :
-                          status === 'Pending' ? 'bg-yellow-500' :
-                          status === 'Confirmed' ? 'bg-blue-500' :
-                          'bg-red-500'
-                        }`}
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
+              {registrationStatus.map((status, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="w-20 text-sm text-gray-600">{status.status}</div>
+                  <div className="flex-1 bg-gray-100 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full ${status.color}`}
+                      style={{ width: `${status.percentage}%` }}
+                    ></div>
                   </div>
-                )
-              })}
+                  <div className="w-16 text-sm text-gray-900 text-right">{status.count}</div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
         
-        <Card>
+        {/* Upcoming Events */}
+        <Card className="bg-white border-gray-200">
           <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
-            <CardDescription>
-              Upcoming training sessions
-            </CardDescription>
+            <CardTitle className="text-lg font-semibold text-gray-900">Upcoming Events</CardTitle>
           </CardHeader>
           <CardContent>
-            {registrations.filter(r => 
-              r.status === 'Confirmed' && 
-              new Date(r.training_date) > new Date()
-            ).length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No upcoming events found
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {registrations
-                  .filter(r => r.status === 'Confirmed' && new Date(r.training_date) > new Date())
-                  .sort((a, b) => new Date(a.training_date).getTime() - new Date(b.training_date).getTime())
-                  .slice(0, 5)
-                  .map(registration => (
-                    <div key={registration.id} className="flex flex-col space-y-1 border-b pb-3">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{getCourseTitle(registration.training_course_id)}</span>
-                        <Badge className="bg-blue-100 text-blue-800">
-                          {formatDate(registration.training_date)}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Customer: {getCustomerName(registration.customer_id)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Trainer: {getTrainerName(registration.trainer_id)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Time: {registration.training_time || 'N/A'}
-                      </div>
-                    </div>
-                  ))
-                }
-              </div>
-            )}
+            <div className="space-y-4">
+              {upcomingEvents.map((event, index) => (
+                <div key={index} className="flex items-start gap-4">
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <div className="text-2xl font-bold text-blue-600">{event.date}</div>
+                    <div className="text-xs text-blue-600">{event.month}</div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{event.title}</h3>
+                    <p className="text-sm text-gray-500">{event.company}</p>
+                    <p className="text-xs text-gray-400 mt-1">{event.trainees} trainees</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
       
       {/* Quick Actions */}
-      <Card>
+      <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button onClick={() => router.push('/dashboard/registrations/add')}>
-              <ClipboardList className="mr-2 h-4 w-4" />
-              New Registration
-            </Button>
-            <Button onClick={() => router.push('/dashboard/customers/add')}>
-              <Users className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
-            <Button onClick={() => router.push('/dashboard/trainers/add')}>
-              <GraduationCap className="mr-2 h-4 w-4" />
-              Add Trainer
-            </Button>
-            <Button onClick={() => router.push('/dashboard/courses/add')}>
-              <BookOpen className="mr-2 h-4 w-4" />
-              Add Course
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {quickActions.map((action, index) => (
+              <Link key={index} href={action.href}>
+                <Button className={`w-full ${action.color} text-white`}>
+                  {action.icon}
+                  <span className="ml-2">{action.label}</span>
+                </Button>
+              </Link>
+            ))}
           </div>
         </CardContent>
       </Card>

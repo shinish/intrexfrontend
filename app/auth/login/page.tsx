@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import axios, { AxiosError } from 'axios'
+import axios from 'axios'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   
-  // Load remembered username on component mount - FIXED: using useEffect instead of useState
+  // Load remembered username on component mount
   useEffect(() => {
     // Only access localStorage on the client side
     if (typeof window !== 'undefined') {
@@ -34,7 +34,7 @@ export default function LoginPage() {
         setRememberMe(true)
       }
     }
-  }, []) // Empty dependency array means this runs once on mount
+  }, [])
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,35 +86,27 @@ export default function LoginPage() {
           console.warn('Could not fetch user details, but login successful')
         }
         
-        // Redirect to dashboard - using push() for client-side navigation
-        router.push('/dashboard')
+        // Redirect to dashboard
+        window.location.href = '/dashboard'
       } else {
         setError('Authentication failed - no token received')
       }
-    } catch (error: unknown) {
-      console.error('Login error:', error)
-      
-      // Type cast to AxiosError for better type handling
-      const err = error as AxiosError
+    } catch (err: any) {
+      console.error('Login error:', err)
       
       // Handle specific error cases
-      if (axios.isAxiosError(err)) {
-        if (err.response) {
-          if (err.response.status === 401) {
-            setError('Invalid username or password')
-          } else if (err.response.status === 422) {
-            setError('Validation error - please check your inputs')
-          } else {
-            setError(`Server error: ${err.response.status}`)
-          }
-        } else if (err.request) {
-          setError('Network error - please check your connection')
+      if (err.response) {
+        if (err.response.status === 401) {
+          setError('Invalid username or password')
+        } else if (err.response.status === 422) {
+          setError('Validation error - please check your inputs')
         } else {
-          setError(`Error: ${err.message}`)
+          setError(`Server error: ${err.response.status}`)
         }
+      } else if (err.request) {
+        setError('Network error - please check your connection')
       } else {
-        // For non-Axios errors
-        setError('An unexpected error occurred')
+        setError(`Error: ${err.message}`)
       }
     } finally {
       setIsLoading(false)
